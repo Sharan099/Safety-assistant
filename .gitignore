@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# Environment variables
+.env
+.env.local
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Vector store (can be regenerated)
+vector_store/
+*.faiss
+*.bin
+
+# Logs
+logs/
+*.log
+
+# Data files (PDFs - too large for GitHub)
+data/**/*.pdf
+documents/*.pdf
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Markdown files (as requested)
+*.md
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
