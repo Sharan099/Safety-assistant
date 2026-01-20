@@ -16,18 +16,18 @@ ENV/
 # Streamlit
 .streamlit/secrets.toml
 
-# Vector store (can be regenerated)
-vector_store/
-*.faiss
-*.bin
+# Vector store (commented out to allow pushing vector store)
+# vector_store/
+# *.faiss
+# *.bin
 
 # Logs
 logs/
 *.log
 
-# Data files (PDFs - too large for GitHub)
-data/**/*.pdf
-documents/*.pdf
+# Data files (PDFs - commented out to allow pushing PDFs)
+# data/**/*.pdf
+# documents/*.pdf
 
 # IDE
 .vscode/
