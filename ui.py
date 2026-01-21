@@ -380,18 +380,80 @@ with st.sidebar:
 
 # Main content
 if not st.session_state.initialized:
-    st.info("👈 Please initialize the Safety Copilot from the sidebar first.")
+    # Welcome screen with RAG explanation
     st.markdown("""
-    ### Getting Started:
-    1. Add PDF documents (ISO 26262, OEM manuals, etc.) to the `documents` folder
-    2. Click "Initialize/Reload Vector Store" in the sidebar
-    3. Start asking safety questions!
+    ## 🛡️ Welcome to Safety Copilot!
     
-    ### Example Questions:
+    **AI-Powered Safety Engineering Assistant using RAG (Retrieval-Augmented Generation)**
+    
+    ### 🚀 How It Works (RAG Process):
+    
+    1. **📤 Upload Documents**: Upload your PDF safety documents (ISO 26262, regulations, manuals, etc.)
+    2. **🔄 Processing**: 
+       - Documents are parsed and split into chunks
+       - Each chunk is converted to embeddings (vector representations)
+       - Embeddings are stored in a FAISS vector database
+    3. **🔍 Query Processing**:
+       - Your question is converted to an embedding
+       - Similar document chunks are retrieved from the vector store
+       - Relevant context is passed to the AI model
+    4. **💬 Answer Generation**: 
+       - AI generates answers based on retrieved context
+       - Sources are cited with page numbers and document references
+    
+    ### 📋 Getting Started:
+    
+    **Option 1: Upload Documents (Recommended)**
+    1. Go to the sidebar → Upload PDF files
+    2. Click "Process & Add Documents"
+    3. Start asking questions!
+    
+    **Option 2: Use Pre-loaded Documents**
+    1. Click "Initialize/Reload Vector Store" in the sidebar
+    2. Start asking questions!
+    
+    ### 💡 Example Questions:
     - "What are the safety goals related to driver monitoring systems in ISO 26262?"
     - "Explain ASIL classification levels"
     - "What are the requirements for functional safety management?"
+    - "Compare UNECE R155 and R156 requirements"
     """)
+    
+    # Toggle to show/hide RAG process details
+    with st.expander("🔬 Learn More About RAG (Retrieval-Augmented Generation)"):
+        st.markdown("""
+        ### What is RAG?
+        
+        **Retrieval-Augmented Generation (RAG)** combines the power of:
+        - **Vector Search**: Fast similarity search using embeddings
+        - **Large Language Models**: Advanced text generation
+        
+        ### The RAG Pipeline:
+        
+        ```
+        User Question
+            ↓
+        [Embedding Model] → Query Vector
+            ↓
+        [FAISS Vector Store] → Similar Document Chunks
+            ↓
+        [Context Assembly] → Relevant Context
+            ↓
+        [LLM (Claude/GPT)] → Generated Answer + Sources
+        ```
+        
+        ### Benefits:
+        - ✅ **No Hallucination**: Answers are grounded in your documents
+        - ✅ **Source Traceability**: Every answer cites its sources
+        - ✅ **Up-to-date**: Add new documents anytime
+        - ✅ **Domain-Specific**: Trained on your safety documents
+        
+        ### Technical Details:
+        - **Embedding Model**: `sentence-transformers/all-MiniLM-L6-v2` (384 dimensions)
+        - **Vector Database**: FAISS (Facebook AI Similarity Search)
+        - **Chunking Strategy**: 600 characters with 100 character overlap
+        - **Retrieval**: Top-K similarity search with threshold filtering
+        """)
 else:
     # RAG Process Visualization Toggle
     st.session_state.show_rag_process = st.checkbox("🔬 Show RAG Process Details", value=st.session_state.show_rag_process)
