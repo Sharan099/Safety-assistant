@@ -813,6 +813,10 @@ Step 2:
     # Clean up answer - remove garbled text patterns and source citations
     import re
     
+    # CRITICAL: Remove patterns like "F z F z" FIRST (before other cleaning)
+    answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\s+\1\s+\2\b', '', answer)
+    answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\b(?=\s+[A-Za-z])', r'\1\2', answer)  # Fix split words like "F z" -> "Fz" if followed by letter
+    
     # Remove common citation patterns from answer
     answer = re.sub(r'\[Document[^\]]+\]', '', answer)
     answer = re.sub(r'\(Document[^\)]+\)', '', answer)
@@ -832,9 +836,6 @@ Step 2:
     # Fix merged words
     answer = re.sub(r'([a-z])([A-Z])', r'\1 \2', answer)
     
-    # Remove garbled patterns like "F z F z" or "Ove In ra ju ll ry" (single letters separated by spaces)
-    # First, remove patterns like "F z F z" (repeated single letters)
-    answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\s+\1\s+\2\b', '', answer)
     # Remove isolated single letters that are likely garbled (but keep "a", "I")
     words = answer.split()
     clean_words = []
@@ -862,7 +863,7 @@ Step 2:
             alnum_ratio = sum(1 for c in sentence if c.isalnum() or c.isspace()) / len(sentence) if sentence else 0
             # Check for too many single-letter "words" (garbled pattern)
             words_in_sentence = sentence.split()
-            single_letter_words = sum(1 for w in words_in_sentence if len(w) == 1 and w.isalpha())
+            single_letter_words = sum(1 for w in words_in_sentence if len(w) == 1 and w.isalpha() and w.lower() not in ['a', 'i'])
             if len(words_in_sentence) > 0 and single_letter_words / len(words_in_sentence) > 0.3:
                 continue  # Skip sentences with >30% single-letter words
             if alnum_ratio >= 0.6:  # At least 60% readable
@@ -883,7 +884,9 @@ Step 2:
         else:
             answer = "I found some information in the documents, but it appears to be unclear or garbled. Please try rephrasing your question or check if the documents contain clear information about this topic."
     
-    # Final cleanup
+    # Final cleanup - ensure no "F z" patterns remain
+    answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\s+\1\s+\2\b', '', answer)
+    answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\b', r'\1\2', answer)  # Merge remaining "F z" -> "Fz"
     answer = re.sub(r'\s+', ' ', answer)
     answer = answer.strip()
     
