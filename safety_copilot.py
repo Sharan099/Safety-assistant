@@ -807,59 +807,69 @@ Step 2:
             answer += "- I couldn't find relevant information in the available safety documents for your question.\n"
             answer += "- Please try rephrasing your question or check if the specific document you're looking for is available.\n"
     
-    # Clean up answer - remove garbled text patterns and source citations FIRST
+    # CRITICAL: Check if answer has structured markdown format - if so, preserve it!
     import re
+    has_markdown_structure = "###" in answer or "**" in answer or "##" in answer
     
-    # CRITICAL: Remove patterns like "F z F z" FIRST (before other cleaning)
-    answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\s+\1\s+\2\b', '', answer)
-    answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\b(?=\s+[A-Za-z])', r'\1\2', answer)  # Fix split words like "F z" -> "Fz" if followed by letter
-    
-    # Remove isolated single letters (except a, I) BEFORE other cleaning
-    words = answer.split()
-    clean_words = []
-    for i, word in enumerate(words):
-        if len(word) == 1 and word.isalpha() and word.lower() not in ['a', 'i']:
-            if i > 0 and i < len(words) - 1:
+    if not has_markdown_structure:
+        # Only apply aggressive cleaning to non-structured answers
+        # CRITICAL: Remove patterns like "F z F z" FIRST (before other cleaning)
+        answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\s+\1\s+\2\b', '', answer)
+        answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\b(?=\s+[A-Za-z])', r'\1\2', answer)  # Fix split words like "F z" -> "Fz" if followed by letter
+        
+        # Remove isolated single letters (except a, I) BEFORE other cleaning
+        words = answer.split()
+        clean_words = []
+        for i, word in enumerate(words):
+            if len(word) == 1 and word.isalpha() and word.lower() not in ['a', 'i']:
+                if i > 0 and i < len(words) - 1:
+                    continue
+            clean_words.append(word)
+        answer = ' '.join(clean_words)
+        
+        # Remove common citation patterns from answer
+        answer = re.sub(r'\[Document[^\]]+\]', '', answer)
+        answer = re.sub(r'\(Document[^\)]+\)', '', answer)
+        answer = re.sub(r'Page \d+', '', answer)
+        answer = re.sub(r'Section [^\s]+', '', answer)
+        answer = re.sub(r'\([^\)]*Origin[^\)]*\)', '', answer)
+        answer = re.sub(r'\([^\)]*Method[^\)]*\)', '', answer)
+        
+        # Aggressive garbled text removal
+        answer = re.sub(r'([a-zA-Z])\1{2,}', r'\1', answer)  # Remove repeated letters (aaa -> a)
+        answer = re.sub(r'([^\w\s])\1{2,}', ' ', answer)  # Remove repeated special chars
+        answer = re.sub(r'_{3,}', ' ', answer)  # Remove multiple underscores
+        answer = re.sub(r'__+', ' ', answer)  # Remove double+ underscores
+        answer = re.sub(r'\s+_\s+', ' ', answer)  # Remove standalone underscores
+        answer = re.sub(r'_\d+', ' ', answer)  # Remove underscore followed by number
+        
+        # Fix merged words
+        answer = re.sub(r'([a-z])([A-Z])', r'\1 \2', answer)
+        
+        # Remove isolated single letters that are likely garbled (but keep "a", "I")
+        words = answer.split()
+        clean_words = []
+        for i, word in enumerate(words):
+            # Skip isolated single letters (likely garbled) except common words
+            if len(word) == 1 and word.isalpha() and word.lower() not in ['a', 'i']:
+                # Check if it's between two words (likely garbled)
+                if i > 0 and i < len(words) - 1:
+                    continue
+            # Skip words with too many special chars
+            if word and sum(1 for c in word if not c.isalnum()) > len(word) * 0.5:
                 continue
-        clean_words.append(word)
-    answer = ' '.join(clean_words)
+            clean_words.append(word)
+        answer = ' '.join(clean_words)
+    else:
+        # For structured markdown, only do minimal cleaning - preserve structure!
+        # Only remove obvious garbled patterns that won't break markdown
+        answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\s+\1\s+\2\b', '', answer)  # Remove "F z F z" patterns
+        # Don't remove other patterns that might be part of valid markdown
     
-    # Remove common citation patterns from answer
-    answer = re.sub(r'\[Document[^\]]+\]', '', answer)
-    answer = re.sub(r'\(Document[^\)]+\)', '', answer)
-    answer = re.sub(r'Page \d+', '', answer)
-    answer = re.sub(r'Section [^\s]+', '', answer)
-    answer = re.sub(r'\([^\)]*Origin[^\)]*\)', '', answer)
-    answer = re.sub(r'\([^\)]*Method[^\)]*\)', '', answer)
+    # ONLY clean if answer doesn't contain structured format markers - preserve markdown structure
+    has_markdown = "###" in answer or "**" in answer or "##" in answer
     
-    # Aggressive garbled text removal
-    answer = re.sub(r'([a-zA-Z])\1{2,}', r'\1', answer)  # Remove repeated letters (aaa -> a)
-    answer = re.sub(r'([^\w\s])\1{2,}', ' ', answer)  # Remove repeated special chars
-    answer = re.sub(r'_{3,}', ' ', answer)  # Remove multiple underscores
-    answer = re.sub(r'__+', ' ', answer)  # Remove double+ underscores
-    answer = re.sub(r'\s+_\s+', ' ', answer)  # Remove standalone underscores
-    answer = re.sub(r'_\d+', ' ', answer)  # Remove underscore followed by number
-    
-    # Fix merged words
-    answer = re.sub(r'([a-z])([A-Z])', r'\1 \2', answer)
-    
-    # Remove isolated single letters that are likely garbled (but keep "a", "I")
-    words = answer.split()
-    clean_words = []
-    for i, word in enumerate(words):
-        # Skip isolated single letters (likely garbled) except common words
-        if len(word) == 1 and word.isalpha() and word.lower() not in ['a', 'i']:
-            # Check if it's between two words (likely garbled)
-            if i > 0 and i < len(words) - 1:
-                continue
-        # Skip words with too many special chars
-        if word and sum(1 for c in word if not c.isalnum()) > len(word) * 0.5:
-            continue
-        clean_words.append(word)
-    answer = ' '.join(clean_words)
-    
-    # ONLY clean if answer contains structured format markers - preserve markdown structure
-    if "###" not in answer and "**" not in answer:
+    if not has_markdown:
         # Only apply aggressive cleaning if answer doesn't have markdown structure
         # Clean up text (less aggressive for structured answers)
         answer = re.sub(r'[^\w\s\-.,;:()\[\]{}%°±×÷≤≥≠≈∞∑∏∫√αβγδεθλμπστφω]', ' ', answer)
