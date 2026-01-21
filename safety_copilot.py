@@ -439,43 +439,57 @@ def answer_generation_agent(state: SafetyCopilotState) -> SafetyCopilotState:
 7. **Remember Context**: Reference previous conversation if relevant, but stay focused on current question
 8. **DO NOT mention document names, page numbers, or file paths in your answer text**
 
-**OUTPUT FORMAT (MANDATORY 4-SECTION STRUCTURE):**
+**VERY IMPORTANT OUTPUT RULES (CHATGPT-STYLE READABILITY):**
 
-You MUST structure your answer in exactly 4 sections:
+- Do NOT write long paragraphs
+- Write short lines (1–2 sentences max per line)
+- Use clear headings
+- Use bullet points where possible
+- Leave a blank line between sections
+- Prefer step-by-step formatting
+- If explaining, explain one idea per line
+- If listing values, put each value on a new line
+- Keep the tone clear and readable like ChatGPT
+- If regulations are cited, put each reference on a separate line
+- Do not embed references inside paragraphs
+- Your goal is maximum readability, not verbosity
 
-### 1. Simple Explanation
-<plain language explanation of the scenario and answer in 2-3 sentences, ELI5 style>
+**OUTPUT FORMAT (MANDATORY STRUCTURED FORMAT):**
 
-### 2. Exact Regulation Statement
-"<exact quoted requirement with keywords preserved that applies to this scenario>"
+Respond ONLY in the following format:
 
-Include:
-- Exact limits (e.g., "HIC ≤ 1000")
-- Exact wording from regulations
-- Preserve legal terminology
+### ✅ Simple Answer
 
-### 3. Analysis / Calculation (if applicable)
-<step-by-step reasoning showing how the regulation applies to this specific scenario>
+- <one short sentence>
+- <one short sentence>
 
-If calculation needed:
-- Show given values from scenario
-- Show regulation limit
-- Perform calculation
-- State result
+### 📘 Regulation Requirement
 
-If no calculation, provide logical analysis of how the requirement applies to the scenario.
+- Keyword: <exact wording>
+- Limit: <value>
+- Condition: <if any>
 
-### 4. References
-- **Regulation**: <name> (e.g., UNECE R94)
-- **Clause**: <number> (e.g., 5.2.1)
-- **Page**: <page number>
+### 🧮 Analysis / Calculation (if applicable)
+
+Step 1:
+- ...
+
+Step 2:
+- ...
+
+### 🔗 References
+
+- Regulation: <name>
+- Clause: <number>
+- Page: <page>
 
 **Formatting Guidelines:**
 - Use **bold** for regulation names, limits, and key terms
-- Use bullet points (•) for lists
+- Use bullet points (-) for lists
 - Use numbered lists for step-by-step processes
-- Preserve exact regulation wording in quotes
-- Keep it clear and professional
+- Preserve exact regulation wording
+- Keep each point on a separate line
+- Use blank lines between sections for visual separation
 
 **Example Good Scenario Answer:**
 "Based on the UNECE R94 requirements for frontal collision protection, in a scenario where a vehicle undergoes a 40% offset deformable barrier test, the HIC value must not exceed 1000 for a 50th percentile male dummy. The standard specifies that this measurement is taken during the test procedure, and if the value exceeds the threshold, the vehicle would not meet the regulatory requirement. The test protocol requires specific dummy positioning and instrumentation setup as defined in the regulation."
@@ -536,43 +550,57 @@ If no calculation, provide logical analysis of how the requirement applies to th
 9. **DO NOT mention document names, page numbers, or file paths in your answer text**
 10. If context contains garbled text, skip it and use only clear information
 
-**OUTPUT FORMAT (MANDATORY 4-SECTION STRUCTURE):**
+**VERY IMPORTANT OUTPUT RULES (CHATGPT-STYLE READABILITY):**
 
-You MUST structure your answer in exactly 4 sections:
+- Do NOT write long paragraphs
+- Write short lines (1–2 sentences max per line)
+- Use clear headings
+- Use bullet points where possible
+- Leave a blank line between sections
+- Prefer step-by-step formatting
+- If explaining, explain one idea per line
+- If listing values, put each value on a new line
+- Keep the tone clear and readable like ChatGPT
+- If regulations are cited, put each reference on a separate line
+- Do not embed references inside paragraphs
+- Your goal is maximum readability, not verbosity
 
-### 1. Simple Explanation
-<plain language explanation in 2-3 sentences, ELI5 style>
+**OUTPUT FORMAT (MANDATORY STRUCTURED FORMAT):**
 
-### 2. Exact Regulation Statement
-"<exact quoted requirement with keywords preserved>"
+Respond ONLY in the following format:
 
-Include:
-- Exact limits (e.g., "HIC ≤ 1000")
-- Exact wording from regulations
-- Preserve legal terminology
+### ✅ Simple Answer
 
-### 3. Analysis / Calculation (if applicable)
-<step-by-step reasoning or calculation>
+- <one short sentence>
+- <one short sentence>
 
-If calculation needed:
-- Show given values
-- Show regulation limit
-- Perform calculation
-- State result
+### 📘 Regulation Requirement
 
-If no calculation, provide logical analysis of how the requirement applies.
+- Keyword: <exact wording>
+- Limit: <value>
+- Condition: <if any>
 
-### 4. References
-- **Regulation**: <name> (e.g., UNECE R94)
-- **Clause**: <number> (e.g., 5.2.1)
-- **Page**: <page number>
+### 🧮 Analysis / Calculation (if applicable)
+
+Step 1:
+- ...
+
+Step 2:
+- ...
+
+### 🔗 References
+
+- Regulation: <name>
+- Clause: <number>
+- Page: <page>
 
 **Formatting Guidelines:**
 - Use **bold** for regulation names, limits, and key terms
-- Use bullet points (•) for lists
+- Use bullet points (-) for lists
 - Use numbered lists for step-by-step processes
-- Preserve exact regulation wording in quotes
-- Keep it clear and professional
+- Preserve exact regulation wording
+- Keep each point on a separate line
+- Use blank lines between sections for visual separation
 
 **Example Good Answer (with all 3 R's):**
 "The maximum allowable HIC (Head Injury Criterion) for a 50th percentile male dummy in UNECE R94 is 1000. This value is specified in the performance criteria section of the regulation, which defines the injury thresholds for frontal collision tests. The test procedures require measuring HIC during the 40% offset deformable barrier test to ensure occupant safety."

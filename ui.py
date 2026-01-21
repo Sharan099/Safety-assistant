@@ -750,26 +750,40 @@ else:
                     if current_section:
                         sections[current_section] = '\n'.join(current_text).strip()
                     
-                    # Display sections with professional styling
+                    # Display sections with ChatGPT-style readability
                     for section_name, section_text in sections.items():
-                        if "Reference" in section_name or "References" in section_name:
+                        if "Reference" in section_name or "References" in section_name or "🔗" in section_name:
                             # Skip - will be shown separately with sources
                             continue
-                        elif "Calculation" in section_name or "Analysis" in section_name:
-                            st.markdown(f'<div class="answer-section" style="background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #1e88e5;">', unsafe_allow_html=True)
-                            st.markdown(f'<h4 style="color: #1e88e5; margin-top: 0; margin-bottom: 0.8rem;">{section_name}</h4>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="answer-text">{section_text}</div>', unsafe_allow_html=True)
+                        elif "Calculation" in section_name or "Analysis" in section_name or "🧮" in section_name:
+                            # Calculation/Analysis section with code-like styling
+                            st.markdown(f'<div class="answer-section" style="background: linear-gradient(135deg, #f0f7ff 0%, #e3f2fd 100%); padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #1e88e5; margin: 1rem 0;">', unsafe_allow_html=True)
+                            st.markdown(f'<h4 style="color: #1e88e5; margin-top: 0; margin-bottom: 0.8rem; font-size: 1.1rem;">{section_name}</h4>', unsafe_allow_html=True)
+                            # Render with proper markdown formatting
+                            st.markdown(section_text)
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        elif "Simple" in section_name or "✅" in section_name:
+                            # Simple Answer section - clean and readable
+                            st.markdown(f'<div class="answer-section" style="margin: 1rem 0;">', unsafe_allow_html=True)
+                            st.markdown(f'<h4 style="color: #2c3e50; margin-top: 0; margin-bottom: 0.8rem; font-weight: 600; font-size: 1.1rem;">{section_name}</h4>', unsafe_allow_html=True)
+                            st.markdown(section_text)
+                            st.markdown('</div>', unsafe_allow_html=True)
+                        elif "Regulation" in section_name or "📘" in section_name:
+                            # Regulation Requirement section - highlighted
+                            st.markdown(f'<div class="answer-section" style="background: #f5f5f5; padding: 1rem; border-radius: 0.5rem; border-left: 4px solid #4caf50; margin: 1rem 0;">', unsafe_allow_html=True)
+                            st.markdown(f'<h4 style="color: #2e7d32; margin-top: 0; margin-bottom: 0.8rem; font-weight: 600; font-size: 1.1rem;">{section_name}</h4>', unsafe_allow_html=True)
+                            st.markdown(section_text)
                             st.markdown('</div>', unsafe_allow_html=True)
                         else:
-                            st.markdown(f'<div class="answer-section">', unsafe_allow_html=True)
-                            st.markdown(f'<h4 style="color: #2c3e50; margin-top: 0; margin-bottom: 0.8rem; font-weight: 600;">{section_name}</h4>', unsafe_allow_html=True)
-                            st.markdown(f'<div class="answer-text">{section_text}</div>', unsafe_allow_html=True)
+                            # Other sections - standard styling
+                            st.markdown(f'<div class="answer-section" style="margin: 1rem 0;">', unsafe_allow_html=True)
+                            st.markdown(f'<h4 style="color: #2c3e50; margin-top: 0; margin-bottom: 0.8rem; font-weight: 600; font-size: 1.1rem;">{section_name}</h4>', unsafe_allow_html=True)
+                            st.markdown(section_text)
                             st.markdown('</div>', unsafe_allow_html=True)
                 else:
-                    # Display as regular answer with better formatting
-                    st.markdown(f'<div class="answer-container">', unsafe_allow_html=True)
-                    st.markdown(f'<div class="answer-text">{answer_clean}</div>', unsafe_allow_html=True)
-                    st.markdown('</div>', unsafe_allow_html=True)
+                    # Display as regular answer with ChatGPT-style formatting
+                    # Render markdown directly for better readability
+                    st.markdown(answer_clean)
                 
                 # Sources - Highlighted with different colors
                 sources = chat.get("sources", [])
