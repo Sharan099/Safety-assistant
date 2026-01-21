@@ -58,10 +58,18 @@ class SafetyCopilotApp:
                                f"  - {DATA_DIR} (professional structure)\n"
                                f"  - {DOCUMENTS_DIR} (legacy)")
             
+            print(f"📊 Processing {len(chunks)} chunks...")
             self.vector_store.create_index(chunks)
-            self.vector_store.save(VECTOR_STORE_DIR)
+            
+            # Try to save, but don't fail if it's a read-only filesystem (Streamlit Cloud)
+            try:
+                self.vector_store.save(VECTOR_STORE_DIR)
+                print("✅ Vector store built and saved")
+            except (PermissionError, OSError) as e:
+                print(f"⚠️  Could not save vector store to disk (this is OK in Streamlit Cloud): {e}")
+                print("✅ Vector store built (in memory)")
+            
             self.is_initialized = True
-            print("✅ Vector store built and saved")
         
         # Create workflow
         self.workflow = create_safety_copilot_workflow(self.vector_store)
