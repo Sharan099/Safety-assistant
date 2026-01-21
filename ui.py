@@ -80,17 +80,30 @@ st.markdown("""
     }
     
     .stMarkdown p {
-        margin-bottom: 1rem;
-        text-align: justify;
+        margin-bottom: 0.8rem;
+        text-align: left;
+        line-height: 1.7;
     }
     
     .stMarkdown ul, .stMarkdown ol {
-        margin-left: 1.5rem;
-        margin-bottom: 1rem;
+        margin: 0.8rem 0;
+        padding-left: 1.5rem;
     }
     
     .stMarkdown li {
         margin-bottom: 0.5rem;
+        line-height: 1.7;
+    }
+    
+    /* Better spacing for headings - ChatGPT style */
+    .stMarkdown h3, .stMarkdown h4 {
+        margin-top: 1.5rem;
+        margin-bottom: 0.8rem;
+    }
+    
+    /* Blank lines between sections */
+    .stMarkdown p + p {
+        margin-top: 0.8rem;
     }
     
     .stMarkdown strong {
