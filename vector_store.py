@@ -1,5 +1,5 @@
 """
-Vector Store for Safety Documents using FAISS
+Vector Store for Safety Documents using FAISS with Hybrid Retrieval (Dense + BM25)
 """
 import faiss
 import numpy as np
@@ -10,6 +10,14 @@ from sentence_transformers import SentenceTransformer
 from document_processor import DocumentChunk
 import json
 
+# Try to import BM25 for keyword retrieval
+try:
+    from rank_bm25 import BM25Okapi
+    BM25_AVAILABLE = True
+except ImportError:
+    BM25_AVAILABLE = False
+    print("⚠️ rank-bm25 not available. Install with: pip install rank-bm25")
+
 class SafetyVectorStore:
     """FAISS-based vector store for safety documents"""
     
@@ -18,15 +26,17 @@ class SafetyVectorStore:
         self.index = None
         self.chunks: List[DocumentChunk] = []
         self.dimension = 384  # all-MiniLM-L6-v2 dimension
+        self.bm25_index = None  # BM25 keyword index
+        self.tokenized_chunks = []  # For BM25
         
     def create_index(self, chunks: List[DocumentChunk]):
-        """Create FAISS index from document chunks"""
+        """Create FAISS index and BM25 index from document chunks"""
         if not chunks:
             raise ValueError("No chunks provided")
         
         self.chunks = chunks
         
-        # Generate embeddings
+        # Generate embeddings for dense retrieval
         texts = [chunk.text for chunk in chunks]
         print(f"🔄 Generating embeddings for {len(texts)} chunks...")
         embeddings = self.embedding_model.encode(texts, show_progress_bar=True)
@@ -35,6 +45,14 @@ class SafetyVectorStore:
         self.dimension = embeddings.shape[1]
         self.index = faiss.IndexFlatL2(self.dimension)
         self.index.add(embeddings.astype('float32'))
+        
+        # Create BM25 index for keyword retrieval
+        if BM25_AVAILABLE:
+            print(f"🔄 Building BM25 keyword index...")
+            # Tokenize chunks for BM25
+            self.tokenized_chunks = [text.lower().split() for text in texts]
+            self.bm25_index = BM25Okapi(self.tokenized_chunks)
+            print(f"✅ Created BM25 index")
         
         print(f"✅ Created FAISS index with {self.index.ntotal} vectors")
     
@@ -75,54 +93,119 @@ class SafetyVectorStore:
         
         print(f"✅ Added {len(chunks)} chunks. Total: {self.index.ntotal} vectors")
     
-    def search(self, query: str, top_k: int = 8, similarity_threshold: float = 0.3, domain_filter: Optional[str] = None) -> List[Tuple[DocumentChunk, float]]:
+    def hybrid_search(self, query: str, keyword_query: str, top_k_dense: int = 10, 
+                     top_k_keyword: int = 10, top_k_final: int = 5, 
+                     similarity_threshold: float = 0.3) -> List[Tuple[DocumentChunk, float]]:
         """
-        Search for similar chunks with improved relevance
-        Returns list of (chunk, similarity_score) tuples sorted by relevance
+        Hybrid retrieval: Combine dense (semantic) and keyword (BM25) search
+        Returns list of (chunk, combined_score) tuples sorted by relevance
         """
         if self.index is None or len(self.chunks) == 0:
             return []
         
-        # Generate query embedding
+        # 1. Dense retrieval (semantic)
+        dense_results = []
         try:
             query_embedding = self.embedding_model.encode([query], normalize_embeddings=True)
         except TypeError:
-            # Fallback if normalize_embeddings not supported
             query_embedding = self.embedding_model.encode([query])
         
-        # Search with more candidates for better results
-        search_k = min(top_k * 3, len(self.chunks))  # Search more, filter later
+        search_k = min(top_k_dense * 2, len(self.chunks))
         distances, indices = self.index.search(query_embedding.astype('float32'), search_k)
         
-        results = []
-        seen_chunks = set()  # Avoid duplicates
-        
+        dense_scores = {}
         for idx, distance in zip(indices[0], distances[0]):
             if idx < len(self.chunks) and idx >= 0:
-                chunk = self.chunks[idx]
-                
-                # Skip duplicates
-                chunk_key = (chunk.document_name, chunk.page_number, chunk.chunk_id)
-                if chunk_key in seen_chunks:
-                    continue
-                seen_chunks.add(chunk_key)
-                
-                # Convert L2 distance to similarity (better normalization)
-                # For normalized embeddings, cosine similarity = 1 - (distance^2 / 2)
                 similarity = max(0.0, 1.0 - (distance * distance / 2.0))
-                
-                # Domain filtering if specified
-                if domain_filter and chunk.domain:
-                    if domain_filter.lower() not in chunk.domain.lower():
-                        # Still include but with lower priority
-                        similarity *= 0.8
-                
                 if similarity >= similarity_threshold:
-                    results.append((chunk, similarity))
+                    dense_scores[idx] = similarity
         
-        # Sort by similarity (highest first) and limit to top_k
-        results.sort(key=lambda x: x[1], reverse=True)
-        return results[:top_k]
+        # 2. Keyword retrieval (BM25)
+        keyword_scores = {}
+        if BM25_AVAILABLE and self.bm25_index and keyword_query:
+            tokenized_query = keyword_query.lower().split()
+            bm25_scores = self.bm25_index.get_scores(tokenized_query)
+            
+            # Normalize BM25 scores to 0-1 range
+            if len(bm25_scores) > 0:
+                max_score = max(bm25_scores) if max(bm25_scores) > 0 else 1
+                for idx, score in enumerate(bm25_scores):
+                    if score > 0:
+                        normalized_score = min(1.0, score / max_score)
+                        keyword_scores[idx] = normalized_score
+        
+        # 3. Merge and combine scores
+        all_indices = set(dense_scores.keys()) | set(keyword_scores.keys())
+        combined_results = []
+        
+        for idx in all_indices:
+            chunk = self.chunks[idx]
+            
+            # Combine scores (weighted average: 60% dense, 40% keyword)
+            dense_score = dense_scores.get(idx, 0.0)
+            keyword_score = keyword_scores.get(idx, 0.0)
+            
+            if dense_score > 0 or keyword_score > 0:
+                combined_score = (0.6 * dense_score) + (0.4 * keyword_score)
+                combined_results.append((chunk, combined_score))
+        
+        # 4. Sort and return top_k_final
+        combined_results.sort(key=lambda x: x[1], reverse=True)
+        return combined_results[:top_k_final]
+    
+    def search(self, query: str, top_k: int = 8, similarity_threshold: float = 0.3, 
+               domain_filter: Optional[str] = None, use_hybrid: bool = True) -> List[Tuple[DocumentChunk, float]]:
+        """
+        Search for similar chunks (uses hybrid search if available)
+        Returns list of (chunk, similarity_score) tuples sorted by relevance
+        """
+        if use_hybrid and BM25_AVAILABLE:
+            # Use hybrid search
+            from query_rewriter import rewrite_query
+            rewritten = rewrite_query(query)
+            return self.hybrid_search(
+                query=rewritten["semantic_query"],
+                keyword_query=rewritten["keyword_query"],
+                top_k_dense=10,
+                top_k_keyword=10,
+                top_k_final=top_k,
+                similarity_threshold=similarity_threshold
+            )
+        else:
+            # Fallback to dense-only search
+            if self.index is None or len(self.chunks) == 0:
+                return []
+            
+            try:
+                query_embedding = self.embedding_model.encode([query], normalize_embeddings=True)
+            except TypeError:
+                query_embedding = self.embedding_model.encode([query])
+            
+            search_k = min(top_k * 3, len(self.chunks))
+            distances, indices = self.index.search(query_embedding.astype('float32'), search_k)
+            
+            results = []
+            seen_chunks = set()
+            
+            for idx, distance in zip(indices[0], distances[0]):
+                if idx < len(self.chunks) and idx >= 0:
+                    chunk = self.chunks[idx]
+                    chunk_key = (chunk.document_name, chunk.page_number, chunk.chunk_id)
+                    if chunk_key in seen_chunks:
+                        continue
+                    seen_chunks.add(chunk_key)
+                    
+                    similarity = max(0.0, 1.0 - (distance * distance / 2.0))
+                    
+                    if domain_filter and chunk.domain:
+                        if domain_filter.lower() not in chunk.domain.lower():
+                            similarity *= 0.8
+                    
+                    if similarity >= similarity_threshold:
+                        results.append((chunk, similarity))
+            
+            results.sort(key=lambda x: x[1], reverse=True)
+            return results[:top_k]
     
     def save(self, save_dir: Path):
         """Save index and chunks to disk"""
