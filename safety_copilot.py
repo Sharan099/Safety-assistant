@@ -560,11 +560,26 @@ Structure your answer with:
         for model_name in claude_models:
             try:
                 print(f"🔄 Trying model: {model_name}")
+                
+                # Build messages with conversation history for better context
+                messages = []
+                
+                # Add conversation history (last 4 exchanges for context)
+                if conversation_history:
+                    for msg in conversation_history[-8:]:  # Last 8 messages (4 exchanges)
+                        role = msg.get("role", "")
+                        content = msg.get("content", "")
+                        if role in ["user", "assistant"]:
+                            messages.append({"role": role, "content": content})
+                
+                # Add current prompt
+                messages.append({"role": "user", "content": prompt})
+                
                 response = claude_client.messages.create(
                     model=model_name,
-                    max_tokens=2000,
-                    temperature=0.3,
-                    messages=[{"role": "user", "content": prompt}]
+                    max_tokens=3000,  # Increased for better formatted answers
+                    temperature=0.2,  # Lower temperature for more focused, less hallucination
+                    messages=messages
                 )
                 # Extract answer from response with validation
                 if response.content and len(response.content) > 0:
