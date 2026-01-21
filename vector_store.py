@@ -281,7 +281,7 @@ class SafetyVectorStore:
         from pathlib import Path
         from document_processor import DocumentProcessor
         from config import (
-            DATA_DIR, DOCUMENTS_DIR, VECTOR_STORE_DIR, CHUNK_SIZE, CHUNK_OVERLAP,
+            REGULATIONS_DIR, VECTOR_STORE_DIR, CHUNK_SIZE, CHUNK_OVERLAP,
             EMBEDDING_MODEL
         )
         
@@ -300,7 +300,7 @@ class SafetyVectorStore:
                 force_rebuild = True
         
         # Build vector store if needed
-        print("🔄 Building vector store from documents...")
+        print("🔄 Building vector store from regulations folder...")
         
         # Initialize document processor
         document_processor = DocumentProcessor(
@@ -310,28 +310,24 @@ class SafetyVectorStore:
         
         # Use regulations_dir if provided, otherwise use default
         if regulations_dir is None:
-            from config import REGULATIONS_DIR
             regulations_dir = REGULATIONS_DIR
         
-        # 1. Load base regulations from /data/regulations/ first
+        # Load all PDFs from regulations folder (recursive to get all subfolders)
         base_chunks = []
-        if regulations_dir.exists() and any(regulations_dir.glob("*.pdf")):
-            print(f"📚 Loading base regulations from: {regulations_dir}")
-            base_chunks = document_processor.process_directory(regulations_dir, recursive=False)
+        if regulations_dir.exists():
+            # Check if there are any PDFs (recursive search)
+            pdf_files = list(regulations_dir.rglob("*.pdf"))
+            if pdf_files:
+                print(f"📚 Loading all regulations from: {regulations_dir}")
+                print(f"   Found {len(pdf_files)} PDF file(s)")
+                base_chunks = document_processor.process_directory(regulations_dir, recursive=True)
+            else:
+                print(f"⚠️  No PDF files found in {regulations_dir}")
         
-        # 2. Try professional data structure as fallback
-        if not base_chunks and DATA_DIR.exists() and any(DATA_DIR.rglob("*.pdf")):
-            print(f"📚 Using professional data structure: {DATA_DIR}")
-            base_chunks = document_processor.process_directory(DATA_DIR, recursive=True)
-        
-        # 3. Legacy fallback
-        if not base_chunks and DOCUMENTS_DIR.exists() and any(DOCUMENTS_DIR.glob("*.pdf")):
-            print(f"📚 Using legacy documents directory: {DOCUMENTS_DIR}")
-            base_chunks = document_processor.process_directory(DOCUMENTS_DIR, recursive=False)
-        
-        # 4. Add user documents if provided
+        # Add user documents if provided
         user_chunks = []
         if user_documents:
+            print(f"📤 Adding {len(user_documents)} user-uploaded document(s)...")
             for doc_path in user_documents:
                 chunks = document_processor.process_document(doc_path)
                 user_chunks.extend(chunks)
@@ -340,11 +336,10 @@ class SafetyVectorStore:
         
         if not all_chunks:
             raise ValueError(f"No documents found. Please add PDF files to:\n"
-                           f"  - {regulations_dir} (base regulations)\n"
-                           f"  - {DATA_DIR} (professional structure)\n"
-                           f"  - {DOCUMENTS_DIR} (legacy)")
+                           f"  - {regulations_dir} (regulations folder)\n"
+                           f"  Or upload documents via the UI")
         
-        print(f"📊 Processing {len(all_chunks)} chunks ({len(base_chunks)} base + {len(user_chunks)} user)...")
+        print(f"📊 Processing {len(all_chunks)} chunks ({len(base_chunks)} from regulations folder + {len(user_chunks)} user-uploaded)...")
         vector_store.create_index(all_chunks)
         
         # Try to save, but don't fail if it's a read-only filesystem (Streamlit Cloud)

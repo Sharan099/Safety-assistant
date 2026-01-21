@@ -414,15 +414,37 @@ with st.sidebar:
     # Document management
     st.header("📄 Documents in Knowledge Base")
     
-    # Show base regulations from /data/regulations/
+    # Show all regulations from /regulations/ folder (recursive)
     from config import REGULATIONS_DIR
-    base_regulations = list(REGULATIONS_DIR.glob("*.pdf")) if REGULATIONS_DIR.exists() else []
-    if base_regulations:
-        st.write(f"**Base Regulations ({len(base_regulations)}):**")
-        for pdf_file in base_regulations[:10]:  # Show first 10
-            st.write(f"- 📄 {pdf_file.name}")
-        if len(base_regulations) > 10:
-            st.write(f"  ... and {len(base_regulations) - 10} more")
+    all_regulations = list(REGULATIONS_DIR.rglob("*.pdf")) if REGULATIONS_DIR.exists() else []
+    
+    if all_regulations:
+        st.write(f"**Regulations Folder ({len(all_regulations)} PDFs):**")
+        # Group by subfolder for better display
+        by_folder = {}
+        for pdf_file in all_regulations:
+            folder = pdf_file.parent.relative_to(REGULATIONS_DIR)
+            folder_name = str(folder) if str(folder) != "." else "root"
+            if folder_name not in by_folder:
+                by_folder[folder_name] = []
+            by_folder[folder_name].append(pdf_file)
+        
+        # Show first 15 PDFs total
+        shown_count = 0
+        for folder_name, pdfs in sorted(by_folder.items()):
+            if shown_count >= 15:
+                break
+            for pdf_file in pdfs[:15 - shown_count]:
+                if folder_name == "root":
+                    st.write(f"- 📄 {pdf_file.name}")
+                else:
+                    st.write(f"- 📄 `{folder_name}/{pdf_file.name}`")
+                shown_count += 1
+                if shown_count >= 15:
+                    break
+        
+        if len(all_regulations) > 15:
+            st.write(f"  ... and {len(all_regulations) - 15} more")
     
     # Show uploaded documents
     if st.session_state.uploaded_documents:
@@ -430,29 +452,8 @@ with st.sidebar:
         for doc in st.session_state.uploaded_documents:
             st.write(f"- 📄 {doc}")
     
-    # Show documents from file system (if any)
-    pdf_files = list(DATA_DIR.rglob("*.pdf")) if DATA_DIR.exists() else []
-    legacy_pdfs = list(DOCUMENTS_DIR.glob("*.pdf")) if DOCUMENTS_DIR.exists() else []
-    
-    if pdf_files or legacy_pdfs:
-        total = len(pdf_files) + len(legacy_pdfs)
-        st.write(f"**System Documents ({total}):**")
-        
-        if pdf_files:
-            for pdf_file in pdf_files[:5]:  # Show first 5
-                relative_path = pdf_file.relative_to(DATA_DIR)
-                st.write(f"- 📄 `{relative_path}`")
-            if len(pdf_files) > 5:
-                st.write(f"  ... and {len(pdf_files) - 5} more")
-        
-        if legacy_pdfs:
-            for pdf_file in legacy_pdfs[:5]:
-                st.write(f"- 📄 {pdf_file.name}")
-            if len(legacy_pdfs) > 5:
-                st.write(f"  ... and {len(legacy_pdfs) - 5} more")
-    
-    if not base_regulations and not st.session_state.uploaded_documents and not pdf_files and not legacy_pdfs:
-        st.info("📤 Add PDFs to `/data/regulations/` folder or upload documents above to get started!")
+    if not all_regulations and not st.session_state.uploaded_documents:
+        st.info("📤 Add PDFs to `/regulations/` folder or upload documents above to get started!")
     
     st.markdown("---")
     

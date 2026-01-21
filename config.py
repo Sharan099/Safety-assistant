@@ -9,40 +9,18 @@ load_dotenv()
 
 # Project paths
 BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / "data"  # Professional data structure
-REGULATIONS_DIR = DATA_DIR / "regulations"  # Base regulations folder (loaded at startup)
-DOCUMENTS_DIR = BASE_DIR / "documents"  # Legacy support
+REGULATIONS_DIR = BASE_DIR / "regulations"  # Single folder for all regulations and PDFs
 VECTOR_STORE_DIR = BASE_DIR / "vector_store"
-BASE_INDEX_DIR = VECTOR_STORE_DIR / "base_index"  # Base regulations index
-USER_INDEX_DIR = VECTOR_STORE_DIR / "user_index"  # User-uploaded documents index
 LOGS_DIR = BASE_DIR / "logs"
 
-# Professional data structure subdirectories
-UNECE_DIR = DATA_DIR / "unece_regulations"
-NHTSA_DIR = DATA_DIR / "nhtsa_guidelines"
-FUNCTIONAL_SAFETY_DIR = DATA_DIR / "functional_safety_concepts"
-VALIDATION_DIR = DATA_DIR / "validation_testing"
-PASSIVE_SAFETY_DIR = DATA_DIR / "passive_safety"
-PASSIVE_SAFETY_REGULATIONS_DIR = PASSIVE_SAFETY_DIR / "regulations"
-PASSIVE_SAFETY_NCAP_DIR = PASSIVE_SAFETY_DIR / "ncap_protocols"
-PASSIVE_SAFETY_FUNDAMENTALS_DIR = PASSIVE_SAFETY_DIR / "fundamentals_training"
+# Legacy support (for backward compatibility, but regulations folder is primary)
+DATA_DIR = BASE_DIR / "data"  # Legacy - not used for RAG
+DOCUMENTS_DIR = BASE_DIR / "documents"  # Legacy - not used for RAG
 
 # Ensure directories exist
-DATA_DIR.mkdir(exist_ok=True)
-REGULATIONS_DIR.mkdir(exist_ok=True)
-DOCUMENTS_DIR.mkdir(exist_ok=True)
+REGULATIONS_DIR.mkdir(exist_ok=True)  # Primary folder for all regulations
 VECTOR_STORE_DIR.mkdir(exist_ok=True)
-BASE_INDEX_DIR.mkdir(exist_ok=True)
-USER_INDEX_DIR.mkdir(exist_ok=True)
 LOGS_DIR.mkdir(exist_ok=True)
-UNECE_DIR.mkdir(exist_ok=True)
-NHTSA_DIR.mkdir(exist_ok=True)
-FUNCTIONAL_SAFETY_DIR.mkdir(exist_ok=True)
-VALIDATION_DIR.mkdir(exist_ok=True)
-PASSIVE_SAFETY_DIR.mkdir(exist_ok=True)
-PASSIVE_SAFETY_REGULATIONS_DIR.mkdir(exist_ok=True)
-PASSIVE_SAFETY_NCAP_DIR.mkdir(exist_ok=True)
-PASSIVE_SAFETY_FUNDAMENTALS_DIR.mkdir(exist_ok=True)
 
 # LLM Configuration
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "anthropic")  # "anthropic", "openai", or "local"

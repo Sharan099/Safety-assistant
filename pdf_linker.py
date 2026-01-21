@@ -9,22 +9,14 @@ import base64
 def find_pdf_path(document_name: str) -> Optional[Path]:
     """
     Find the PDF file path by document name (stem)
-    Searches in both professional data structure and legacy documents folder
+    Searches in the regulations folder (recursive)
     """
-    # Try professional data structure first (recursive search)
-    if DATA_DIR.exists():
-        for pdf_path in DATA_DIR.rglob("*.pdf"):
+    # Search in regulations folder (recursive)
+    if REGULATIONS_DIR.exists():
+        for pdf_path in REGULATIONS_DIR.rglob("*.pdf"):
             if pdf_path.stem.lower() == document_name.lower():
                 return pdf_path
             # Also try partial matches
-            if document_name.lower() in pdf_path.stem.lower():
-                return pdf_path
-    
-    # Try legacy documents folder
-    if DOCUMENTS_DIR.exists():
-        for pdf_path in DOCUMENTS_DIR.glob("*.pdf"):
-            if pdf_path.stem.lower() == document_name.lower():
-                return pdf_path
             if document_name.lower() in pdf_path.stem.lower():
                 return pdf_path
     
@@ -66,12 +58,9 @@ def create_pdf_download_link(pdf_path: Path) -> str:
 def get_pdf_relative_path(pdf_path: Path) -> str:
     """Get relative path for serving PDFs in Streamlit"""
     try:
-        # Try relative to DATA_DIR first
-        if pdf_path.is_relative_to(DATA_DIR):
-            return str(pdf_path.relative_to(DATA_DIR))
-        # Try relative to DOCUMENTS_DIR
-        elif pdf_path.is_relative_to(DOCUMENTS_DIR):
-            return str(pdf_path.relative_to(DOCUMENTS_DIR))
+        # Try relative to REGULATIONS_DIR
+        if pdf_path.is_relative_to(REGULATIONS_DIR):
+            return str(pdf_path.relative_to(REGULATIONS_DIR))
         # Fallback to filename
         else:
             return pdf_path.name
