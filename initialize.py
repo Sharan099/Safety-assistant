@@ -2,7 +2,7 @@
 Initialize Safety Copilot - Process documents and build vector store
 Standalone script - NO Streamlit dependencies
 """
-from vector_store_loader import load_or_build_vector_store
+from vector_store import SafetyVectorStore
 from core_app import SafetyCopilotCore
 from config import DATA_DIR, DOCUMENTS_DIR
 from pathlib import Path
