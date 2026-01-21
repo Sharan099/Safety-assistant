@@ -114,18 +114,27 @@ st.markdown("""
         border-left: 4px solid var(--primary-teal) !important;
     }
     
-    /* Markdown Styling - Clean & Readable */
+    /* Markdown Styling - Clean & Readable with Black Text */
     .stMarkdown {
-        color: var(--text-dark) !important;
-        font-family: 'Inter', 'Poppins', sans-serif !important;
+        color: #000000 !important;
+        font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
         font-size: 1rem !important;
-        line-height: 1.7 !important;
+        line-height: 1.8 !important;
+    }
+    
+    /* Assistant message markdown - Black text, better font */
+    [data-testid="stChatMessage"][data-message-author="assistant"] .stMarkdown {
+        color: #000000 !important;
+        font-family: 'Inter', 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+        font-weight: 400 !important;
+        font-size: 1rem !important;
+        line-height: 1.8 !important;
     }
     
     .stMarkdown p {
         margin-bottom: 0.8rem !important;
-        color: var(--text-dark) !important;
-        line-height: 1.7 !important;
+        color: #000000 !important;
+        line-height: 1.8 !important;
     }
     
     /* Headings - Teal Color */
@@ -144,9 +153,9 @@ st.markdown("""
     }
     
     .stMarkdown li {
-        margin-bottom: 0.5rem !important;
-        color: var(--text-dark) !important;
-        line-height: 1.7 !important;
+        margin-bottom: 0.6rem !important;
+        color: #000000 !important;
+        line-height: 1.8 !important;
     }
     
     /* Code Blocks */
@@ -248,6 +257,60 @@ st.markdown("""
     .status-waiting {
         color: #64748B !important;
     }
+    
+    /* Sidebar spinner and info boxes - Make visible */
+    [data-testid="stSidebar"] .stSpinner,
+    [data-testid="stSidebar"] .stSpinner > div {
+        color: #FFFFFF !important;
+        background: rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    [data-testid="stSidebar"] .stInfo,
+    [data-testid="stSidebar"] .stSuccess,
+    [data-testid="stSidebar"] .stWarning,
+    [data-testid="stSidebar"] .stError {
+        background: rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        color: #FFFFFF !important;
+        border-radius: 8px !important;
+        padding: 0.75rem !important;
+    }
+    
+    [data-testid="stSidebar"] .stInfo > div,
+    [data-testid="stSidebar"] .stSuccess > div,
+    [data-testid="stSidebar"] .stWarning > div,
+    [data-testid="stSidebar"] .stError > div {
+        color: #FFFFFF !important;
+    }
+    
+    /* Structured sections styling */
+    .answer-section {
+        margin: 1.5rem 0 !important;
+        padding: 1.25rem !important;
+        background: white !important;
+        border-radius: 10px !important;
+        border-left: 4px solid var(--primary-teal) !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    }
+    
+    .simple-answer-section {
+        border-left-color: var(--primary-teal) !important;
+    }
+    
+    .regulation-section {
+        border-left-color: #10B981 !important;
+        background: #F0FDF4 !important;
+    }
+    
+    .calculation-section {
+        border-left-color: var(--primary-sky) !important;
+        background: var(--light-sky) !important;
+    }
+    
+    .references-section {
+        border-left-color: #8B5CF6 !important;
+        background: #F5F3FF !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -308,9 +371,84 @@ else:
             if message["role"] == "user":
                 st.write(message["content"])
             else:
-                # Display answer - SIMPLIFIED: Just show markdown directly
+                # Display answer with structured format parsing
                 if answer and answer.strip():
-                    st.markdown(answer)
+                    # Check for structured format
+                    has_sections = "### ✅" in answer or "### 📘" in answer or "### 🧮" in answer or "### 🔗" in answer or "### Simple Answer" in answer
+                    
+                    if has_sections:
+                        # Parse sections
+                        sections = {}
+                        current_section = None
+                        current_text = []
+                        
+                        for line in answer.split('\n'):
+                            line_stripped = line.strip()
+                            if not line_stripped:
+                                if current_section:
+                                    current_text.append('')
+                                continue
+                            
+                            if line_stripped.startswith('###'):
+                                # Save previous section
+                                if current_section:
+                                    sections[current_section] = '\n'.join(current_text).strip()
+                                # Start new section
+                                current_section = line_stripped.replace('#', '').strip()
+                                current_text = []
+                            else:
+                                if current_section:
+                                    current_text.append(line)
+                        
+                        # Save last section
+                        if current_section:
+                            sections[current_section] = '\n'.join(current_text).strip()
+                        
+                        # Display sections in proper order
+                        section_order = [
+                            ("✅ Simple Answer", "simple-answer-section"),
+                            ("📘 Regulation Requirement", "regulation-section"),
+                            ("🧮 Analysis / Calculation", "calculation-section"),
+                            ("🧮 Analysis", "calculation-section"),
+                            ("🧮 Calculation", "calculation-section"),
+                            ("🔗 References", "references-section")
+                        ]
+                        
+                        displayed_sections = set()
+                        for section_key, section_class in section_order:
+                            for section_name in sections.keys():
+                                if section_key in section_name and section_name not in displayed_sections:
+                                    section_text = sections[section_name]
+                                    if section_text:
+                                        st.markdown(f'<div class="answer-section {section_class}">', unsafe_allow_html=True)
+                                        st.markdown(f"**{section_name}**")
+                                        # Render line by line for proper alignment
+                                        for line in section_text.split('\n'):
+                                            if line.strip():
+                                                if line.strip().startswith('-') or line.strip().startswith('*'):
+                                                    st.markdown(line.strip())
+                                                elif line.strip().startswith('Step'):
+                                                    st.markdown(f"**{line.strip()}**")
+                                                else:
+                                                    st.markdown(f"- {line.strip()}")
+                                        st.markdown('</div>', unsafe_allow_html=True)
+                                        displayed_sections.add(section_name)
+                        
+                        # Display any remaining sections
+                        for section_name, section_text in sections.items():
+                            if section_name not in displayed_sections and section_text:
+                                st.markdown(f'<div class="answer-section">', unsafe_allow_html=True)
+                                st.markdown(f"**{section_name}**")
+                                for line in section_text.split('\n'):
+                                    if line.strip():
+                                        if line.strip().startswith('-') or line.strip().startswith('*'):
+                                            st.markdown(line.strip())
+                                        else:
+                                            st.markdown(f"- {line.strip()}")
+                                st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        # Display as regular markdown
+                        st.markdown(answer)
                 else:
                     st.warning("⚠️ No answer generated. Please try again.")
                 
@@ -381,9 +519,84 @@ if prompt := st.chat_input("💬 Ask a Safety Question"):
                         answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\s+\1\s+\2\b', '', answer)
                         answer = re.sub(r'\b([A-Za-z])\s+([A-Za-z])\b(?=\s+[A-Za-z])', r'\1\2', answer)
                 
-                # Display answer immediately - SIMPLIFIED
+                # Display answer with structured format parsing
                 if answer and answer.strip():
-                    st.markdown(answer)
+                    # Check for structured format
+                    has_sections = "### ✅" in answer or "### 📘" in answer or "### 🧮" in answer or "### 🔗" in answer or "### Simple Answer" in answer
+                    
+                    if has_sections:
+                        # Parse sections
+                        sections = {}
+                        current_section = None
+                        current_text = []
+                        
+                        for line in answer.split('\n'):
+                            line_stripped = line.strip()
+                            if not line_stripped:
+                                if current_section:
+                                    current_text.append('')
+                                continue
+                            
+                            if line_stripped.startswith('###'):
+                                # Save previous section
+                                if current_section:
+                                    sections[current_section] = '\n'.join(current_text).strip()
+                                # Start new section
+                                current_section = line_stripped.replace('#', '').strip()
+                                current_text = []
+                            else:
+                                if current_section:
+                                    current_text.append(line)
+                        
+                        # Save last section
+                        if current_section:
+                            sections[current_section] = '\n'.join(current_text).strip()
+                        
+                        # Display sections in proper order
+                        section_order = [
+                            ("✅ Simple Answer", "simple-answer-section"),
+                            ("📘 Regulation Requirement", "regulation-section"),
+                            ("🧮 Analysis / Calculation", "calculation-section"),
+                            ("🧮 Analysis", "calculation-section"),
+                            ("🧮 Calculation", "calculation-section"),
+                            ("🔗 References", "references-section")
+                        ]
+                        
+                        displayed_sections = set()
+                        for section_key, section_class in section_order:
+                            for section_name in sections.keys():
+                                if section_key in section_name and section_name not in displayed_sections:
+                                    section_text = sections[section_name]
+                                    if section_text:
+                                        st.markdown(f'<div class="answer-section {section_class}">', unsafe_allow_html=True)
+                                        st.markdown(f"**{section_name}**")
+                                        # Render line by line for proper alignment
+                                        for line in section_text.split('\n'):
+                                            if line.strip():
+                                                if line.strip().startswith('-') or line.strip().startswith('*'):
+                                                    st.markdown(line.strip())
+                                                elif line.strip().startswith('Step'):
+                                                    st.markdown(f"**{line.strip()}**")
+                                                else:
+                                                    st.markdown(f"- {line.strip()}")
+                                        st.markdown('</div>', unsafe_allow_html=True)
+                                        displayed_sections.add(section_name)
+                        
+                        # Display any remaining sections
+                        for section_name, section_text in sections.items():
+                            if section_name not in displayed_sections and section_text:
+                                st.markdown(f'<div class="answer-section">', unsafe_allow_html=True)
+                                st.markdown(f"**{section_name}**")
+                                for line in section_text.split('\n'):
+                                    if line.strip():
+                                        if line.strip().startswith('-') or line.strip().startswith('*'):
+                                            st.markdown(line.strip())
+                                        else:
+                                            st.markdown(f"- {line.strip()}")
+                                st.markdown('</div>', unsafe_allow_html=True)
+                    else:
+                        # Display as regular markdown
+                        st.markdown(answer)
                 else:
                     st.error("Failed to generate answer.")
                 
