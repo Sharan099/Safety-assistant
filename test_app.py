@@ -155,7 +155,7 @@ def main():
     print("\n" + "=" * 60)
     if all_passed:
         print("✅ All checks passed! Ready to run the app.")
-        print("\n🚀 Run: streamlit run streamlit_app.py")
+        print("\n🚀 Run: streamlit run ui.py")
     else:
         print("⚠️  Some checks need attention. See above for details.")
         print("\n💡 Next steps:")

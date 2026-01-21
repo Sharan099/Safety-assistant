@@ -33,7 +33,7 @@ def main():
     
     try:
         # Load or build vector store
-        vector_store = load_or_build_vector_store(force_rebuild=True)
+        vector_store = SafetyVectorStore.load_or_build_store(force_rebuild=True)
         
         # Create core app
         core = SafetyCopilotCore()
@@ -44,7 +44,7 @@ def main():
         print(f"   Documents: {stats['num_documents']}")
         print(f"   Chunks: {stats['num_chunks']}")
         print(f"   Model: {stats['embedding_model']}")
-        print("\n🚀 You can now run: streamlit run streamlit_app.py")
+        print("\n🚀 You can now run: streamlit run ui.py")
         
     except Exception as e:
         print(f"\n❌ Error during initialization: {e}")

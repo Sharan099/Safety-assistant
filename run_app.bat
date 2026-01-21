@@ -14,7 +14,7 @@ if not exist .env (
 REM Run Streamlit
 echo 🚀 Starting Streamlit app...
 echo.
-streamlit run streamlit_app.py
+streamlit run ui.py
 
 pause
 
