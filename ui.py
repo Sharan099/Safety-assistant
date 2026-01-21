@@ -243,7 +243,13 @@ def load_vector_store(force_rebuild: bool = False) -> SafetyVectorStore:
     Returns ONLY the vector store object - NOT the app
     This is the ONLY safe way to do heavy work in Streamlit
     """
-    return SafetyVectorStore.load_or_build_store(force_rebuild=force_rebuild)
+    # Load base regulations from /data/regulations/ at startup
+    from config import REGULATIONS_DIR
+    return SafetyVectorStore.load_or_build_store(
+        force_rebuild=force_rebuild,
+        regulations_dir=REGULATIONS_DIR,
+        user_documents=None  # User documents added separately via upload
+    )
 
 # Sidebar
 with st.sidebar:

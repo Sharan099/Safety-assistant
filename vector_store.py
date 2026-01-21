@@ -308,21 +308,44 @@ class SafetyVectorStore:
             chunk_overlap=CHUNK_OVERLAP
         )
         
-        # Try professional data structure first, fallback to legacy
-        if DATA_DIR.exists() and any(DATA_DIR.rglob("*.pdf")):
-            print(f"📚 Using professional data structure: {DATA_DIR}")
-            chunks = document_processor.process_directory(DATA_DIR, recursive=True)
-        else:
-            print(f"📚 Using legacy documents directory: {DOCUMENTS_DIR}")
-            chunks = document_processor.process_directory(DOCUMENTS_DIR, recursive=False)
+        # Use regulations_dir if provided, otherwise use default
+        if regulations_dir is None:
+            from config import REGULATIONS_DIR
+            regulations_dir = REGULATIONS_DIR
         
-        if not chunks:
+        # 1. Load base regulations from /data/regulations/ first
+        base_chunks = []
+        if regulations_dir.exists() and any(regulations_dir.glob("*.pdf")):
+            print(f"📚 Loading base regulations from: {regulations_dir}")
+            base_chunks = document_processor.process_directory(regulations_dir, recursive=False)
+        
+        # 2. Try professional data structure as fallback
+        if not base_chunks and DATA_DIR.exists() and any(DATA_DIR.rglob("*.pdf")):
+            print(f"📚 Using professional data structure: {DATA_DIR}")
+            base_chunks = document_processor.process_directory(DATA_DIR, recursive=True)
+        
+        # 3. Legacy fallback
+        if not base_chunks and DOCUMENTS_DIR.exists() and any(DOCUMENTS_DIR.glob("*.pdf")):
+            print(f"📚 Using legacy documents directory: {DOCUMENTS_DIR}")
+            base_chunks = document_processor.process_directory(DOCUMENTS_DIR, recursive=False)
+        
+        # 4. Add user documents if provided
+        user_chunks = []
+        if user_documents:
+            for doc_path in user_documents:
+                chunks = document_processor.process_document(doc_path)
+                user_chunks.extend(chunks)
+        
+        all_chunks = base_chunks + user_chunks
+        
+        if not all_chunks:
             raise ValueError(f"No documents found. Please add PDF files to:\n"
+                           f"  - {regulations_dir} (base regulations)\n"
                            f"  - {DATA_DIR} (professional structure)\n"
                            f"  - {DOCUMENTS_DIR} (legacy)")
         
-        print(f"📊 Processing {len(chunks)} chunks...")
-        vector_store.create_index(chunks)
+        print(f"📊 Processing {len(all_chunks)} chunks ({len(base_chunks)} base + {len(user_chunks)} user)...")
+        vector_store.create_index(all_chunks)
         
         # Try to save, but don't fail if it's a read-only filesystem (Streamlit Cloud)
         try:
