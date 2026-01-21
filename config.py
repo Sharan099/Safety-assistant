@@ -9,7 +9,7 @@ load_dotenv()
 
 # Project paths
 BASE_DIR = Path(__file__).parent
-REGULATIONS_DIR = BASE_DIR / "regulations"  # Single folder for all regulations and PDFs
+REGULATIONS_DIR = BASE_DIR / "data" / "regulations"  # Single folder for all regulations and PDFs
 VECTOR_STORE_DIR = BASE_DIR / "vector_store"
 LOGS_DIR = BASE_DIR / "logs"
 
