@@ -38,6 +38,43 @@ class SafetyVectorStore:
         
         print(f"✅ Created FAISS index with {self.index.ntotal} vectors")
     
+    def add_documents(self, chunks: List[DocumentChunk]):
+        """
+        Add new documents incrementally to existing vector store
+        Useful for adding uploaded documents without rebuilding entire index
+        """
+        if not chunks:
+            return
+        
+        # If index doesn't exist, create it
+        if self.index is None:
+            self.chunks = []
+            self.dimension = 384  # Default for all-MiniLM-L6-v2
+        
+        # Generate embeddings for new chunks
+        texts = [chunk.text for chunk in chunks]
+        print(f"🔄 Generating embeddings for {len(texts)} new chunks...")
+        embeddings = self.embedding_model.encode(texts, show_progress_bar=True)
+        
+        # Set dimension if not set
+        if self.dimension != embeddings.shape[1]:
+            if self.index is None:
+                self.dimension = embeddings.shape[1]
+            else:
+                raise ValueError(f"Embedding dimension mismatch: existing {self.dimension}, new {embeddings.shape[1]}")
+        
+        # Create index if it doesn't exist
+        if self.index is None:
+            self.index = faiss.IndexFlatL2(self.dimension)
+        
+        # Add embeddings to index
+        self.index.add(embeddings.astype('float32'))
+        
+        # Add chunks to list
+        self.chunks.extend(chunks)
+        
+        print(f"✅ Added {len(chunks)} chunks. Total: {self.index.ntotal} vectors")
+    
     def search(self, query: str, top_k: int = 8, similarity_threshold: float = 0.3, domain_filter: Optional[str] = None) -> List[Tuple[DocumentChunk, float]]:
         """
         Search for similar chunks with improved relevance

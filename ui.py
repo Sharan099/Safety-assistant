@@ -144,6 +144,10 @@ if "initialized" not in st.session_state:
     st.session_state.initialized = False
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
+if "uploaded_documents" not in st.session_state:
+    st.session_state.uploaded_documents = []
+if "show_rag_process" not in st.session_state:
+    st.session_state.show_rag_process = False
 
 # Header
 st.markdown('<h1 class="main-header">🛡️ Safety Copilot</h1>', unsafe_allow_html=True)
@@ -163,6 +167,97 @@ def load_vector_store(force_rebuild: bool = False) -> SafetyVectorStore:
 
 # Sidebar
 with st.sidebar:
+    st.header("📤 Upload Documents")
+    st.markdown("Upload PDF documents to build your knowledge base")
+    
+    # Document uploader
+    uploaded_files = st.file_uploader(
+        "Choose PDF files",
+        type=['pdf'],
+        accept_multiple_files=True,
+        help="Upload one or more PDF documents to process and add to the vector store"
+    )
+    
+    if uploaded_files:
+        st.info(f"📄 {len(uploaded_files)} file(s) selected")
+        for file in uploaded_files:
+            st.write(f"- {file.name} ({file.size / 1024:.1f} KB)")
+    
+    # Process uploaded documents button
+    if uploaded_files and st.button("🔄 Process & Add Documents", type="primary"):
+        try:
+            from document_processor import DocumentProcessor
+            from config import CHUNK_SIZE, CHUNK_OVERLAP
+            import tempfile
+            import os
+            
+            with st.spinner("Processing uploaded documents..."):
+                # Initialize document processor
+                processor = DocumentProcessor(
+                    chunk_size=CHUNK_SIZE,
+                    chunk_overlap=CHUNK_OVERLAP
+                )
+                
+                # Get or create vector store
+                if st.session_state.initialized and st.session_state.core:
+                    vector_store = st.session_state.core.vector_store
+                else:
+                    # Create new vector store
+                    vector_store = SafetyVectorStore(embedding_model=EMBEDDING_MODEL)
+                    core = SafetyCopilotCore()
+                    core.set_vector_store(vector_store)
+                    st.session_state.core = core
+                
+                processed_count = 0
+                total_chunks = 0
+                
+                # Process each uploaded file
+                for uploaded_file in uploaded_files:
+                    try:
+                        # Save uploaded file temporarily
+                        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+                            tmp_file.write(uploaded_file.getbuffer())
+                            tmp_path = Path(tmp_file.name)
+                        
+                        # Process document
+                        chunks = processor.process_document(tmp_path)
+                        
+                        if chunks:
+                            # Add to vector store
+                            vector_store.add_documents(chunks)
+                            processed_count += 1
+                            total_chunks += len(chunks)
+                            
+                            # Track uploaded documents
+                            if uploaded_file.name not in st.session_state.uploaded_documents:
+                                st.session_state.uploaded_documents.append(uploaded_file.name)
+                            
+                            st.success(f"✅ Processed {uploaded_file.name}: {len(chunks)} chunks")
+                        else:
+                            st.warning(f"⚠️ No content extracted from {uploaded_file.name}")
+                        
+                        # Clean up temp file
+                        os.unlink(tmp_path)
+                        
+                    except Exception as e:
+                        st.error(f"❌ Error processing {uploaded_file.name}: {str(e)}")
+                        if tmp_path.exists():
+                            os.unlink(tmp_path)
+                
+                if processed_count > 0:
+                    # Recreate workflow with updated vector store
+                    st.session_state.core.set_vector_store(vector_store)
+                    st.session_state.initialized = True
+                    st.success(f"🎉 Successfully processed {processed_count} document(s) with {total_chunks} total chunks!")
+                    st.rerun()
+                else:
+                    st.error("❌ No documents were successfully processed")
+                    
+        except Exception as e:
+            st.error(f"❌ Error processing documents: {str(e)}")
+            st.exception(e)
+    
+    st.markdown("---")
     st.header("⚙️ Configuration")
     
     # Initialize button (SAFE PATTERN with defensive error handling)
@@ -231,31 +326,37 @@ with st.sidebar:
     st.markdown("---")
     
     # Document management
-    st.header("📄 Documents")
-    st.write(f"**Professional Data Structure:** `{DATA_DIR}`")
-    st.write(f"**Legacy Directory:** `{DOCUMENTS_DIR}`")
+    st.header("📄 Documents in Knowledge Base")
     
-    # List documents from professional structure
+    # Show uploaded documents
+    if st.session_state.uploaded_documents:
+        st.write(f"**Uploaded Documents ({len(st.session_state.uploaded_documents)}):**")
+        for doc in st.session_state.uploaded_documents:
+            st.write(f"- 📄 {doc}")
+    
+    # Show documents from file system (if any)
     pdf_files = list(DATA_DIR.rglob("*.pdf")) if DATA_DIR.exists() else []
     legacy_pdfs = list(DOCUMENTS_DIR.glob("*.pdf")) if DOCUMENTS_DIR.exists() else []
     
     if pdf_files or legacy_pdfs:
         total = len(pdf_files) + len(legacy_pdfs)
-        st.write(f"**Found {total} PDF(s):**")
+        st.write(f"**System Documents ({total}):**")
         
         if pdf_files:
-            st.write("**Professional Structure:**")
-            for pdf_file in pdf_files:
+            for pdf_file in pdf_files[:5]:  # Show first 5
                 relative_path = pdf_file.relative_to(DATA_DIR)
-                st.write(f"- `{relative_path}`")
+                st.write(f"- 📄 `{relative_path}`")
+            if len(pdf_files) > 5:
+                st.write(f"  ... and {len(pdf_files) - 5} more")
         
         if legacy_pdfs:
-            st.write("**Legacy Directory:**")
-            for pdf_file in legacy_pdfs:
-                st.write(f"- {pdf_file.name}")
-    else:
-        st.warning("⚠️ No PDF files found. Add PDFs to:")
-        st.code(f"{DATA_DIR}/unece_regulations/\n{DATA_DIR}/nhtsa_guidelines/\n{DATA_DIR}/functional_safety_concepts/\n{DATA_DIR}/validation_testing/")
+            for pdf_file in legacy_pdfs[:5]:
+                st.write(f"- 📄 {pdf_file.name}")
+            if len(legacy_pdfs) > 5:
+                st.write(f"  ... and {len(legacy_pdfs) - 5} more")
+    
+    if not st.session_state.uploaded_documents and not pdf_files and not legacy_pdfs:
+        st.info("📤 Upload PDF documents above to get started!")
     
     st.markdown("---")
     
@@ -292,8 +393,37 @@ if not st.session_state.initialized:
     - "What are the requirements for functional safety management?"
     """)
 else:
+    # RAG Process Visualization Toggle
+    st.session_state.show_rag_process = st.checkbox("🔬 Show RAG Process Details", value=st.session_state.show_rag_process)
+    
     # Chat interface
     st.header("💬 Ask a Safety Question")
+    
+    # Show RAG process if enabled
+    if st.session_state.show_rag_process:
+        with st.expander("🔍 RAG Process Flow (Click to see details)", expanded=True):
+            st.markdown("""
+            ### Current RAG Pipeline:
+            
+            1. **📤 Document Upload** → PDFs are parsed and chunked
+            2. **🔄 Embedding Generation** → Chunks converted to 384-dimensional vectors
+            3. **💾 Vector Storage** → Stored in FAISS index for fast similarity search
+            4. **🔍 Query Processing** → Your question → embedding → similarity search
+            5. **📚 Context Retrieval** → Top-K most relevant chunks retrieved
+            6. **🤖 Answer Generation** → LLM generates answer using retrieved context
+            7. **📎 Source Citation** → Answer includes document references and page numbers
+            
+            **Current Stats:**
+            """)
+            if st.session_state.core:
+                stats = st.session_state.core.get_stats()
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.metric("Documents", stats.get('num_documents', 0))
+                with col2:
+                    st.metric("Chunks", stats.get('num_chunks', 0))
+                with col3:
+                    st.metric("Embedding Model", stats.get('embedding_model', 'N/A').split('/')[-1])
     
     # Display chat history
     for chat in st.session_state.chat_history:
