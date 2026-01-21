@@ -3,7 +3,7 @@ PDF Linker - Creates clickable links to PDF documents with page numbers
 """
 from pathlib import Path
 from typing import Optional, Tuple
-from config import DATA_DIR, DOCUMENTS_DIR
+from config import REGULATIONS_DIR
 import base64
 
 def find_pdf_path(document_name: str) -> Optional[Path]:
