@@ -454,9 +454,9 @@ def answer_generation_agent(state: SafetyCopilotState) -> SafetyCopilotState:
 - Do not embed references inside paragraphs
 - Your goal is maximum readability, not verbosity
 
-**OUTPUT FORMAT (MANDATORY STRUCTURED FORMAT):**
+**OUTPUT FORMAT (MANDATORY - YOU MUST FOLLOW THIS EXACT STRUCTURE):**
 
-Respond ONLY in the following format:
+You MUST respond in this exact format. Do not deviate:
 
 ### ✅ Simple Answer
 
@@ -483,13 +483,15 @@ Step 2:
 - Clause: <number>
 - Page: <page>
 
-**Formatting Guidelines:**
+**CRITICAL FORMATTING RULES:**
+- Start with "### ✅ Simple Answer" (exact text with emoji)
+- Then "### 📘 Regulation Requirement" (exact text with emoji)
+- Use bullet points (-) for ALL lists
+- Put each bullet point on a NEW line
+- Use blank lines between sections
 - Use **bold** for regulation names, limits, and key terms
-- Use bullet points (-) for lists
-- Use numbered lists for step-by-step processes
-- Preserve exact regulation wording
-- Keep each point on a separate line
-- Use blank lines between sections for visual separation
+- Keep each idea on a separate line
+- Do NOT write paragraphs - use bullet points instead
 
 **Example Good Scenario Answer:**
 "Based on the UNECE R94 requirements for frontal collision protection, in a scenario where a vehicle undergoes a 40% offset deformable barrier test, the HIC value must not exceed 1000 for a 50th percentile male dummy. The standard specifies that this measurement is taken during the test procedure, and if the value exceeds the threshold, the vehicle would not meet the regulatory requirement. The test protocol requires specific dummy positioning and instrumentation setup as defined in the regulation."
@@ -565,9 +567,9 @@ Step 2:
 - Do not embed references inside paragraphs
 - Your goal is maximum readability, not verbosity
 
-**OUTPUT FORMAT (MANDATORY STRUCTURED FORMAT):**
+**OUTPUT FORMAT (MANDATORY - YOU MUST FOLLOW THIS EXACT STRUCTURE):**
 
-Respond ONLY in the following format:
+You MUST respond in this exact format. Do not deviate:
 
 ### ✅ Simple Answer
 
@@ -594,13 +596,15 @@ Step 2:
 - Clause: <number>
 - Page: <page>
 
-**Formatting Guidelines:**
+**CRITICAL FORMATTING RULES:**
+- Start with "### ✅ Simple Answer" (exact text with emoji)
+- Then "### 📘 Regulation Requirement" (exact text with emoji)
+- Use bullet points (-) for ALL lists
+- Put each bullet point on a NEW line
+- Use blank lines between sections
 - Use **bold** for regulation names, limits, and key terms
-- Use bullet points (-) for lists
-- Use numbered lists for step-by-step processes
-- Preserve exact regulation wording
-- Keep each point on a separate line
-- Use blank lines between sections for visual separation
+- Keep each idea on a separate line
+- Do NOT write paragraphs - use bullet points instead
 
 **Example Good Answer (with all 3 R's):**
 "The maximum allowable HIC (Head Injury Criterion) for a 50th percentile male dummy in UNECE R94 is 1000. This value is specified in the performance criteria section of the regulation, which defines the injury thresholds for frontal collision tests. The test procedures require measuring HIC during the 40% offset deformable barrier test to ensure occupant safety."
