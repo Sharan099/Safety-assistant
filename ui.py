@@ -291,25 +291,34 @@ st.markdown("""
         border-radius: 10px !important;
         border-left: 4px solid var(--primary-teal) !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+        color: #1F2937 !important;
+    }
+    
+    .answer-section * {
+        color: #1F2937 !important;
     }
     
     .simple-answer-section {
         border-left-color: var(--primary-teal) !important;
+        background: white !important;
     }
     
     .regulation-section {
         border-left-color: #10B981 !important;
-        background: #F0FDF4 !important;
+        background: white !important;
+        border-left-width: 4px !important;
     }
     
     .calculation-section {
         border-left-color: var(--primary-sky) !important;
-        background: var(--light-sky) !important;
+        background: white !important;
+        border-left-width: 4px !important;
     }
     
     .references-section {
         border-left-color: #8B5CF6 !important;
-        background: #F5F3FF !important;
+        background: white !important;
+        border-left-width: 4px !important;
     }
 </style>
 """, unsafe_allow_html=True)
