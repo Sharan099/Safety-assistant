@@ -314,6 +314,262 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+def parse_and_display_sections(answer: str):
+    """
+    Parse structured answer into sections and display with proper formatting.
+    Handles cases where sections might be in a continuous paragraph.
+    """
+    import re
+    
+    if not answer or not answer.strip():
+        return False
+    
+    # Check for structured format
+    has_sections = (
+        "### ✅" in answer or "### 📘" in answer or "### 🧮" in answer or "### 🔗" in answer or 
+        "### Simple Answer" in answer or "✅ Simple Answer" in answer or 
+        "📘 Regulation Requirement" in answer or "🧮 Analysis" in answer or "🔗 References" in answer
+    )
+    
+    if not has_sections:
+        st.markdown(answer)
+        return False
+    
+    # Parse sections - handle both line-by-line and paragraph formats
+    sections = {}
+    
+    # Pattern to match section headers (with or without ###, with or without emoji)
+    section_pattern = r'(###?\s*[✅📘🧮🔗]?\s*(?:Simple Answer|Regulation Requirement|Analysis(?:\s*/\s*Calculation)?|Calculation|References))'
+    
+    # Also match emoji directly followed by section name (for paragraph format)
+    emoji_section_pattern = r'([✅📘🧮🔗]\s*(?:Simple Answer|Regulation Requirement|Analysis(?:\s*/\s*Calculation)?|Calculation|References))'
+    
+    # Try splitting by both patterns
+    parts = re.split(f'{section_pattern}|{emoji_section_pattern}', answer, flags=re.IGNORECASE)
+    
+    current_section = None
+    current_text = []
+    
+    i = 0
+    while i < len(parts):
+        part = parts[i].strip()
+        if not part:
+            i += 1
+            continue
+        
+        # Check if this part is a section header
+        is_header = False
+        normalized_header = None
+        
+        if re.match(section_pattern, part, re.IGNORECASE) or re.match(emoji_section_pattern, part):
+            is_header = True
+            normalized_header = part.replace('#', '').strip()
+            # Normalize section names
+            if 'Simple Answer' in normalized_header:
+                normalized_header = '✅ Simple Answer'
+            elif 'Regulation Requirement' in normalized_header:
+                normalized_header = '📘 Regulation Requirement'
+            elif 'Analysis' in normalized_header or 'Calculation' in normalized_header:
+                normalized_header = '🧮 Analysis / Calculation'
+            elif 'References' in normalized_header:
+                normalized_header = '🔗 References'
+        
+        if is_header:
+            # Save previous section
+            if current_section and current_text:
+                sections[current_section] = '\n'.join(current_text).strip()
+            # Start new section
+            current_section = normalized_header
+            current_text = []
+        else:
+            # This is content - add it to current section
+            if current_section:
+                current_text.append(part)
+        i += 1
+    
+    # Save last section
+    if current_section and current_text:
+        sections[current_section] = '\n'.join(current_text).strip()
+    
+    # Also parse line by line for proper formatting (fallback)
+    if not sections:
+        current_section_line = None
+        current_text_line = []
+        
+        for line in answer.split('\n'):
+            line_stripped = line.strip()
+            if not line_stripped:
+                if current_section_line:
+                    current_text_line.append('')
+                continue
+            
+            if line_stripped.startswith('###') or re.match(r'[✅📘🧮🔗]\s*(?:Simple Answer|Regulation Requirement|Analysis|Calculation|References)', line_stripped):
+                # Save previous section
+                if current_section_line:
+                    sections[current_section_line] = '\n'.join(current_text_line).strip()
+                # Start new section
+                current_section_line = line_stripped.replace('#', '').strip()
+                # Normalize
+                if 'Simple Answer' in current_section_line:
+                    current_section_line = '✅ Simple Answer'
+                elif 'Regulation Requirement' in current_section_line:
+                    current_section_line = '📘 Regulation Requirement'
+                elif 'Analysis' in current_section_line or 'Calculation' in current_section_line:
+                    current_section_line = '🧮 Analysis / Calculation'
+                elif 'References' in current_section_line:
+                    current_section_line = '🔗 References'
+                current_text_line = []
+            else:
+                if current_section_line:
+                    current_text_line.append(line)
+        
+        # Save last section
+        if current_section_line:
+            sections[current_section_line] = '\n'.join(current_text_line).strip()
+    
+    if not sections:
+        st.markdown(answer)
+        return False
+    
+    # Display sections in proper order
+    section_order = [
+        ("✅ Simple Answer", "simple-answer-section"),
+        ("📘 Regulation Requirement", "regulation-section"),
+        ("🧮 Analysis / Calculation", "calculation-section"),
+        ("🧮 Analysis", "calculation-section"),
+        ("🧮 Calculation", "calculation-section"),
+        ("🔗 References", "references-section")
+    ]
+    
+    displayed_sections = set()
+    for section_key, section_class in section_order:
+        for section_name in sections.keys():
+            if section_key in section_name and section_name not in displayed_sections:
+                section_text = sections[section_name]
+                if section_text:
+                    st.markdown(f'<div class="answer-section {section_class}">', unsafe_allow_html=True)
+                    st.markdown(f"**{section_name}**")
+                    
+                    # Break down section text into individual points
+                    # Handle both line-by-line format and continuous paragraph format
+                    text_parts = []
+                    
+                    # First, check if this is a continuous paragraph (no newlines or few newlines)
+                    if '\n' not in section_text or section_text.count('\n') < 2:
+                        # This is likely a continuous paragraph - split by " - " pattern
+                        # But be careful - " - " might appear in the middle of sentences
+                        # Split by " - " but preserve context
+                        parts = re.split(r'\s+-\s+', section_text)
+                        for i, part in enumerate(parts):
+                            part = part.strip()
+                            if not part:
+                                continue
+                            
+                            # Remove leading/trailing punctuation that might be from splitting
+                            part = re.sub(r'^[.,;:\s]+|[.,;:\s]+$', '', part)
+                            
+                            if part:
+                                # Check if this part looks like a complete sentence or point
+                                # If it starts with a capital or is a keyword pattern, it's likely a new point
+                                if i == 0 or part[0].isupper() or re.match(r'^(Keyword|Limit|Condition|Regulation|Clause|Page):', part, re.IGNORECASE):
+                                    text_parts.append(f"- {part}")
+                                else:
+                                    # This might be a continuation - append to previous or make new
+                                    if text_parts and not text_parts[-1].endswith('.'):
+                                        text_parts[-1] += f" {part}"
+                                    else:
+                                        text_parts.append(f"- {part}")
+                    else:
+                        # Line-by-line format
+                        lines = section_text.split('\n')
+                        for line in lines:
+                            line = line.strip()
+                            if not line:
+                                text_parts.append('')
+                                continue
+                            
+                            # If line already starts with bullet, keep it
+                            if line.startswith('-') or line.startswith('*'):
+                                text_parts.append(line)
+                            # If line contains " - " pattern, split it intelligently
+                            elif ' - ' in line:
+                                # Check if this is a keyword pattern (Keyword:, Limit:, etc.)
+                                if re.search(r'(Keyword|Limit|Condition|Regulation|Clause|Page):', line, re.IGNORECASE):
+                                    # Split by keyword patterns first
+                                    sub_parts = re.split(r'(Keyword:|Limit:|Condition:|Regulation:|Clause:|Page:)', line)
+                                    current_item = ""
+                                    for j, sub_part in enumerate(sub_parts):
+                                        sub_part = sub_part.strip()
+                                        if not sub_part:
+                                            continue
+                                        if sub_part in ['Keyword:', 'Limit:', 'Condition:', 'Regulation:', 'Clause:', 'Page:']:
+                                            if current_item:
+                                                text_parts.append(f"- {current_item}")
+                                            current_item = f"**{sub_part}** "
+                                        else:
+                                            current_item += sub_part
+                                    if current_item:
+                                        text_parts.append(f"- {current_item}")
+                                else:
+                                    # Regular split by " - "
+                                    sub_parts = line.split(' - ')
+                                    for j, sub_part in enumerate(sub_parts):
+                                        sub_part = sub_part.strip()
+                                        if sub_part:
+                                            text_parts.append(f"- {sub_part}")
+                            # If line is long and contains periods, try to split by sentences
+                            elif len(line) > 80 and '. ' in line:
+                                sentences = re.split(r'(?<=\.)\s+', line)
+                                for sentence in sentences:
+                                    sentence = sentence.strip()
+                                    if sentence:
+                                        text_parts.append(f"- {sentence}")
+                            else:
+                                text_parts.append(f"- {line}")
+                    
+                    # Render each part
+                    for text_part in text_parts:
+                        if not text_part:
+                            st.markdown("")  # Empty line
+                            continue
+                        
+                        text_part = text_part.strip()
+                        if not text_part:
+                            continue
+                        
+                        # If already a bullet point, render as is
+                        if text_part.startswith('-') or text_part.startswith('*'):
+                            # Check for special formatting keywords
+                            if any(keyword in text_part for keyword in ['Keyword:', 'Limit:', 'Condition:', 'Regulation:', 'Clause:', 'Page:']):
+                                # Format keywords in bold
+                                formatted = re.sub(r'(Keyword:|Limit:|Condition:|Regulation:|Clause:|Page:)(\s*)', r'**\1**\2', text_part)
+                                st.markdown(formatted)
+                            elif text_part.startswith('Step') or re.match(r'Step\s+\d+:', text_part, re.IGNORECASE):
+                                st.markdown(f"**{text_part}**")
+                            else:
+                                st.markdown(text_part)
+                        else:
+                            st.markdown(f"- {text_part}")
+                    
+                    st.markdown('</div>', unsafe_allow_html=True)
+                    displayed_sections.add(section_name)
+    
+    # Display any remaining sections
+    for section_name, section_text in sections.items():
+        if section_name not in displayed_sections and section_text:
+            st.markdown(f'<div class="answer-section">', unsafe_allow_html=True)
+            st.markdown(f"**{section_name}**")
+            for text_line in section_text.split('\n'):
+                text_line = text_line.strip()
+                if text_line:
+                    if text_line.startswith('-') or text_line.startswith('*'):
+                        st.markdown(text_line)
+                    else:
+                        st.markdown(f"- {text_line}")
+            st.markdown('</div>', unsafe_allow_html=True)
+    
+    return True
+
 # Sidebar
 with st.sidebar:
     st.markdown("""
@@ -373,82 +629,7 @@ else:
             else:
                 # Display answer with structured format parsing
                 if answer and answer.strip():
-                    # Check for structured format
-                    has_sections = "### ✅" in answer or "### 📘" in answer or "### 🧮" in answer or "### 🔗" in answer or "### Simple Answer" in answer
-                    
-                    if has_sections:
-                        # Parse sections
-                        sections = {}
-                        current_section = None
-                        current_text = []
-                        
-                        for line in answer.split('\n'):
-                            line_stripped = line.strip()
-                            if not line_stripped:
-                                if current_section:
-                                    current_text.append('')
-                                continue
-                            
-                            if line_stripped.startswith('###'):
-                                # Save previous section
-                                if current_section:
-                                    sections[current_section] = '\n'.join(current_text).strip()
-                                # Start new section
-                                current_section = line_stripped.replace('#', '').strip()
-                                current_text = []
-                            else:
-                                if current_section:
-                                    current_text.append(line)
-                        
-                        # Save last section
-                        if current_section:
-                            sections[current_section] = '\n'.join(current_text).strip()
-                        
-                        # Display sections in proper order
-                        section_order = [
-                            ("✅ Simple Answer", "simple-answer-section"),
-                            ("📘 Regulation Requirement", "regulation-section"),
-                            ("🧮 Analysis / Calculation", "calculation-section"),
-                            ("🧮 Analysis", "calculation-section"),
-                            ("🧮 Calculation", "calculation-section"),
-                            ("🔗 References", "references-section")
-                        ]
-                        
-                        displayed_sections = set()
-                        for section_key, section_class in section_order:
-                            for section_name in sections.keys():
-                                if section_key in section_name and section_name not in displayed_sections:
-                                    section_text = sections[section_name]
-                                    if section_text:
-                                        st.markdown(f'<div class="answer-section {section_class}">', unsafe_allow_html=True)
-                                        st.markdown(f"**{section_name}**")
-                                        # Render line by line for proper alignment
-                                        for line in section_text.split('\n'):
-                                            if line.strip():
-                                                if line.strip().startswith('-') or line.strip().startswith('*'):
-                                                    st.markdown(line.strip())
-                                                elif line.strip().startswith('Step'):
-                                                    st.markdown(f"**{line.strip()}**")
-                                                else:
-                                                    st.markdown(f"- {line.strip()}")
-                                        st.markdown('</div>', unsafe_allow_html=True)
-                                        displayed_sections.add(section_name)
-                        
-                        # Display any remaining sections
-                        for section_name, section_text in sections.items():
-                            if section_name not in displayed_sections and section_text:
-                                st.markdown(f'<div class="answer-section">', unsafe_allow_html=True)
-                                st.markdown(f"**{section_name}**")
-                                for line in section_text.split('\n'):
-                                    if line.strip():
-                                        if line.strip().startswith('-') or line.strip().startswith('*'):
-                                            st.markdown(line.strip())
-                                        else:
-                                            st.markdown(f"- {line.strip()}")
-                                st.markdown('</div>', unsafe_allow_html=True)
-                    else:
-                        # Display as regular markdown
-                        st.markdown(answer)
+                    parse_and_display_sections(answer)
                 else:
                     st.warning("⚠️ No answer generated. Please try again.")
                 
@@ -521,82 +702,7 @@ if prompt := st.chat_input("💬 Ask a Safety Question"):
                 
                 # Display answer with structured format parsing
                 if answer and answer.strip():
-                    # Check for structured format
-                    has_sections = "### ✅" in answer or "### 📘" in answer or "### 🧮" in answer or "### 🔗" in answer or "### Simple Answer" in answer
-                    
-                    if has_sections:
-                        # Parse sections
-                        sections = {}
-                        current_section = None
-                        current_text = []
-                        
-                        for line in answer.split('\n'):
-                            line_stripped = line.strip()
-                            if not line_stripped:
-                                if current_section:
-                                    current_text.append('')
-                                continue
-                            
-                            if line_stripped.startswith('###'):
-                                # Save previous section
-                                if current_section:
-                                    sections[current_section] = '\n'.join(current_text).strip()
-                                # Start new section
-                                current_section = line_stripped.replace('#', '').strip()
-                                current_text = []
-                            else:
-                                if current_section:
-                                    current_text.append(line)
-                        
-                        # Save last section
-                        if current_section:
-                            sections[current_section] = '\n'.join(current_text).strip()
-                        
-                        # Display sections in proper order
-                        section_order = [
-                            ("✅ Simple Answer", "simple-answer-section"),
-                            ("📘 Regulation Requirement", "regulation-section"),
-                            ("🧮 Analysis / Calculation", "calculation-section"),
-                            ("🧮 Analysis", "calculation-section"),
-                            ("🧮 Calculation", "calculation-section"),
-                            ("🔗 References", "references-section")
-                        ]
-                        
-                        displayed_sections = set()
-                        for section_key, section_class in section_order:
-                            for section_name in sections.keys():
-                                if section_key in section_name and section_name not in displayed_sections:
-                                    section_text = sections[section_name]
-                                    if section_text:
-                                        st.markdown(f'<div class="answer-section {section_class}">', unsafe_allow_html=True)
-                                        st.markdown(f"**{section_name}**")
-                                        # Render line by line for proper alignment
-                                        for line in section_text.split('\n'):
-                                            if line.strip():
-                                                if line.strip().startswith('-') or line.strip().startswith('*'):
-                                                    st.markdown(line.strip())
-                                                elif line.strip().startswith('Step'):
-                                                    st.markdown(f"**{line.strip()}**")
-                                                else:
-                                                    st.markdown(f"- {line.strip()}")
-                                        st.markdown('</div>', unsafe_allow_html=True)
-                                        displayed_sections.add(section_name)
-                        
-                        # Display any remaining sections
-                        for section_name, section_text in sections.items():
-                            if section_name not in displayed_sections and section_text:
-                                st.markdown(f'<div class="answer-section">', unsafe_allow_html=True)
-                                st.markdown(f"**{section_name}**")
-                                for line in section_text.split('\n'):
-                                    if line.strip():
-                                        if line.strip().startswith('-') or line.strip().startswith('*'):
-                                            st.markdown(line.strip())
-                                        else:
-                                            st.markdown(f"- {line.strip()}")
-                                st.markdown('</div>', unsafe_allow_html=True)
-                    else:
-                        # Display as regular markdown
-                        st.markdown(answer)
+                    parse_and_display_sections(answer)
                 else:
                     st.error("Failed to generate answer.")
                 
