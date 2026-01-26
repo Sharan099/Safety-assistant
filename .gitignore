@@ -8,6 +8,7 @@ env/
 venv/
 ENV/
 .venv
+antenv/  # Azure App Service virtual environment
 
 # Environment variables
 .env
